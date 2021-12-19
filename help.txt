@@ -1,0 +1,13 @@
+RAZITE
+------
+A lightweight command-line based API client
+
+COMMAND | FUNCTIONALITY       | ARGS        |
+------- | ------------------- | ----------- |
+help    | shows the message   | -           |
+watch   | watch path          | path, link  |
+config  | edit config.json    | -           |
+reset   | reset config.json   | -           |
+clear   | clear console       | -           |
+log     | print out config    | keys        |
+quit    | exit                | -           |
