@@ -4,6 +4,8 @@ import { green, reverse, red, dim } from "btss";
 import { readFileSync, writeFileSync } from "fs";
 import { createInterface } from "readline";
 import { spawn } from "child_process";
+import { resolve } from "path";
+import { parse } from "dotenv";
 import fetch from "node-fetch";
 import explainStatusCode from "./errorType.js";
 import watch from "recursive-watch";
@@ -13,23 +15,23 @@ globalThis.completions = "config quit clear log help".split(" ");
 
 init();
 function init() {
-  try {
-    globalThis.config = loadJson("../config.json");
-    const rl = createRl();
-
-    rl.on("line", (line) => {
-      try {
-        parseCommand(line, rl);
-      } catch (e) {
-        log(e);
-      }
-    });
-  } catch (e) {
-    log(e.message);
-  }
+  globalThis.config = loadJson("../config.json");
+  const rl = createRl();
+  question(rl);
 }
 
-function parseCommand(line, rl) {
+function question(rl) {
+  rl.question("> ", async (line) => {
+    try {
+      await parseCommand(line, rl);
+    } catch (e) {
+      log(e);
+    }
+    question(rl);
+  });
+}
+
+async function parseCommand(line, rl) {
   line = line.split(" ").filter(Boolean);
   switch (line[0]) {
     case "config":
@@ -38,11 +40,13 @@ function parseCommand(line, rl) {
     case "clear":
       return console.clear();
     case "watch":
-      return watchPath(line[1],line[2]);
+      return watchPath(line[1], line[2]);
     case "help":
       return help();
     case "reset":
       return resetConfig();
+    case "load":
+      return loadEnv(line[1]);
     case "log":
       line.shift();
       let value = config;
@@ -51,9 +55,15 @@ function parseCommand(line, rl) {
     case "quit":
       process.exit();
     default:
-      if (line[0]) fetchLink(line[0]);
+      if (line[0]) await fetchLink(line[0]);
       break;
   }
+}
+
+function loadEnv(path) {
+  const keys = parse(readFile(path, true), "utf-8");
+  log(keys)
+  config = { ...keys, ...config };
 }
 
 function watchPath(path, link = "def") {
@@ -75,15 +85,15 @@ function resetConfig() {
   log(green("changed config.json"));
 }
 
-function fetchLink(command) {
+async function fetchLink(command) {
   // fetch if it is a link
   if (command.startsWith("http"))
-    return request(command, config.options, config.type);
+    return await request(command, config.options, config.type);
 
   //special case for def
   if (command == "def") {
     if (config.def.startsWith("http"))
-      return request(config.def, config.options, config.type);
+      return await request(config.def, config.options, config.type);
     else if (!config[config.def])
       return console.log(red(`def ${config.def} is not defined!`));
     else command = config.def;
@@ -93,8 +103,9 @@ function fetchLink(command) {
   if (!config[command] && command)
     return console.log(red(`${command} not defined!`));
   if (command != undefined)
-    request(config[command], config.options, config.type);
+    await request(config[command], config.options, config.type);
 }
+
 async function request(link, options, type, exitAfter) {
   log(dim(`fetching ${link}`));
 
@@ -144,6 +155,7 @@ function openConfig() {
     init();
   });
 }
+
 function handleFetchErrors(err) {
   log(red(err.name));
   log(`type : ${err.type}`);
@@ -160,8 +172,13 @@ function handleFetchErrors(err) {
   }
 }
 
-function readFile(path) {
-  return readFileSync(new URL(path, import.meta.url).pathname, "utf-8");
+function readFile(path, cwd) {
+  return readFileSync(
+    cwd
+      ? resolve(process.cwd(), path)
+      : new URL(path, import.meta.url).pathname,
+    "utf-8"
+  );
 }
 
 function completer(line) {
@@ -173,31 +190,6 @@ function completer(line) {
 
 function help() {
   console.log(readFile("../help.txt"));
-}
-
-function loadEnv(envKey, saveUnder, saveKey) {
-  envConfig();
-  if (!process.env[envKey])
-    return console.log(red(`key ${envKey} is not defined in .env`));
-
-  console.log(dim(`loaded ${envKey} : ${process.env[envKey]}`));
-  switch (saveUnder) {
-    case "config":
-      changeConfig([saveKey, process.env[envKey]]);
-      break;
-    case "opt":
-      changeOptions([saveKey, process.env[envKey]]);
-      break;
-    case "header":
-      changeHeader([saveKey, process.env[envKey]]);
-      break;
-    case "body":
-      changeBody([saveKey, process.env[envKey]]);
-      break;
-    default:
-      console.log(red(`${saveUnder} not defined!`));
-      break;
-  }
 }
 
 function loadJson(path) {
