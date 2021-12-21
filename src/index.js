@@ -15,6 +15,8 @@ globalThis.log = (str) => console.log(str);
 globalThis.completions = "config quit clear log help".split(" ");
 const config_path = homedir() + "/.config/.razite.json";
 
+console.log("RAZITE")
+console.log('type "help" to know more!')
 init();
 function init() {
   try {
