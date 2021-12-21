@@ -3,6 +3,7 @@
 import { green, reverse, red, dim } from "btss";
 import { readFileSync, writeFileSync } from "fs";
 import { createInterface } from "readline";
+import { homedir } from "os";
 import { spawn } from "child_process";
 import { resolve } from "path";
 import { parse } from "dotenv";
@@ -12,22 +13,22 @@ import watch from "recursive-watch";
 
 globalThis.log = (str) => console.log(str);
 globalThis.completions = "config quit clear log help".split(" ");
+const config_path = homedir() + "/.config/.razite.json";
 
 init();
 function init() {
-  globalThis.config = loadJson("../config.json");
+  try {
+    globalThis.config = loadJson(config_path, 1);
+  } catch (e) {
+    globalThis.config = resetConfig();
+  }
   const rl = createRl();
-  question(rl);
-}
-
-function question(rl) {
-  rl.question("> ", async (line) => {
+  rl.on("line", async (line) => {
     try {
       await parseCommand(line, rl);
     } catch (e) {
-      log(e);
+      log(e.message);
     }
-    question(rl);
   });
 }
 
@@ -44,7 +45,7 @@ async function parseCommand(line, rl) {
     case "help":
       return help();
     case "reset":
-      return resetConfig();
+      return config = resetConfig();
     case "load":
       return loadEnv(line[1]);
     case "log":
@@ -62,8 +63,8 @@ async function parseCommand(line, rl) {
 
 function loadEnv(path) {
   const keys = parse(readFile(path, true), "utf-8");
-  log(keys)
   config = { ...keys, ...config };
+  writeFileSync(config_path, JSON.stringify(config));
 }
 
 function watchPath(path, link = "def") {
@@ -78,11 +79,10 @@ function watchPath(path, link = "def") {
 }
 
 function resetConfig() {
-  writeFileSync(
-    new URL("../config.json", import.meta.url).pathname,
-    readFile("../config.swp")
-  );
-  log(green("changed config.json"));
+  const data = readFile("../config.swp");
+  writeFileSync(config_path, data);
+  log(green("changed .razite.json"));
+  return JSON.parse(data);
 }
 
 async function fetchLink(command) {
@@ -130,6 +130,7 @@ async function request(link, options, type, exitAfter) {
       if (body) log(body);
     } else {
       log(red(`server responded with status ${reverse(response.status)}`));
+      log("method : " + options.method);
       log(options);
       log(explainStatusCode(response.status));
     }
@@ -143,13 +144,9 @@ async function request(link, options, type, exitAfter) {
 function openConfig() {
   const editor = process.env.EDITOR || "vim";
 
-  const child = spawn(
-    editor,
-    [new URL("../config.json", import.meta.url).pathname],
-    {
-      stdio: "inherit",
-    }
-  );
+  const child = spawn(editor, [config_path], {
+    stdio: "inherit",
+  });
 
   child.on("exit", (e, code) => {
     init();
@@ -158,16 +155,19 @@ function openConfig() {
 
 function handleFetchErrors(err) {
   log(red(err.name));
-  log(`type : ${err.type}`);
+  err.type ? log(`type : ${err.type}`) : "";
   log(err.message);
 
   if (this.exitAfter) return;
-  switch (err.type) {
-    case "invalid-json":
+  switch (err.name) {
+    case "SyntaxError":
       log(dim(`fetching as text instead`));
-      request(this.link, options, "text", this.exitAfter);
+      request(this.link, config.options, "text", this.exitAfter);
       break;
     case "system":
+      break;
+    default:
+      log(err.name);
       break;
   }
 }
@@ -193,13 +193,7 @@ function help() {
 }
 
 function loadJson(path) {
-  try {
-    return JSON.parse(readFile(path));
-  } catch (e) {
-    if (e.name == "SyntaxError") log("Invalid syntax in config.json");
-    else log(e.message);
-    throw "couldn't load json";
-  }
+  return JSON.parse(readFile(path));
 }
 
 function createRl() {

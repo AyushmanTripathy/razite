@@ -1,10 +1,17 @@
-export default function explainStatusCode(code) {
+import { red } from "btss";
+
+function errorTitle(code) {
   let error = "";
   if (code < 200) error += "Informational response\n";
   else if (code < 300) error += "Successful response\n";
   else if (code < 400) error += "Redirects\n";
   else if (code < 500) error += "Client error\n";
   else if (code < 600) error += "Server error\n";
+  return red(error);
+}
+
+export default function explainStatusCode(code) {
+  let error = errorTitle(code);
 
   switch (code) {
     case 300:

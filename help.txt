@@ -1,6 +1,7 @@
 RAZITE
 ------
 A lightweight command-line based API client
+the config file is stored in $HOME/.config/.razite.json 
 
 COMMAND | FUNCTIONALITY       | ARGS        |
 ------- | ------------------- | ----------- |
