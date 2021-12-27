@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { green, reverse, red, dim } from "btss";
+import { green, reverse, red, grey } from "btss";
 import { readFileSync, writeFileSync } from "fs";
 import { createInterface } from "readline";
 import { homedir } from "os";
@@ -109,7 +109,7 @@ async function fetchLink(command) {
 }
 
 async function request(link, options, type, exitAfter) {
-  log(dim(`fetching ${link}`));
+  log(grey(`fetching ${link}`));
 
   const start_time = new Date().getTime();
 
@@ -138,7 +138,7 @@ async function request(link, options, type, exitAfter) {
     }
 
   const end_time = new Date().getTime();
-  log(dim(`fetch ended in ${(end_time - start_time) / 1000}s`));
+  log(grey(`fetch ended in ${(end_time - start_time) / 1000}s`));
 
   if (exitAfter) return process.exit();
 }
@@ -163,7 +163,7 @@ function handleFetchErrors(err) {
   if (this.exitAfter) return;
   switch (err.name) {
     case "SyntaxError":
-      log(dim(`fetching as text instead`));
+      log(grey(`fetching as text instead`));
       request(this.link, config.options, "text", this.exitAfter);
       break;
     case "system":
