@@ -1,6 +1,6 @@
 {
   "name": "razite",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A lightweight command-line based API client",
   "main": "src/index.js",
   "type": "module",
@@ -15,11 +15,12 @@
     "terminal"
   ],
   "author": "Ayushman Tripathy",
+  "homepage": "https://github.com/AyushmanTripathy/razite",
   "license": "MIT",
   "dependencies": {
     "btss": "^1.1.0",
+    "chokidar": "^3.5.3",
     "dotenv": "^10.0.0",
-    "node-fetch": "^3.1.0",
-    "recursive-watch": "^1.1.4"
+    "node-fetch": "^3.1.0"
   }
 }

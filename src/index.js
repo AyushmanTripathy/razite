@@ -9,10 +9,10 @@ import { resolve } from "path";
 import { parse } from "dotenv";
 import fetch from "node-fetch";
 import explainStatusCode from "./errorType.js";
-import watch from "recursive-watch";
+import { watch } from "chokidar";
 
 globalThis.log = (str) => console.log(str);
-globalThis.completions = "config quit clear log help".split(" ");
+globalThis.completions = "config quit clear log help watch load reset".split(" ");
 const config_path = homedir() + "/.config/.razite.json";
 
 console.log("RAZITE")
@@ -70,11 +70,11 @@ function loadEnv(path) {
 }
 
 function watchPath(path, link = "def") {
-  globalThis.watching = false;
-  watch(path, function (filename) {
-    if (watching) return;
-    setTimeout(() => (watching = false), 100);
-    watching = true;
+  let wait = true;
+  setTimeout(() => (wait = false), 1000);
+  watch(path).on("all", (event,file) => {
+    if (wait) return;
+    log(wait)
     console.log(green("Change dectected."));
     fetchLink(link);
   });
