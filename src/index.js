@@ -12,7 +12,10 @@ import explainStatusCode from "./errorType.js";
 import { watch } from "chokidar";
 
 const log = (str) => console.log(str);
-const completions = "edit quit clear log help watch load reset".split(" ");
+const saveConfig = () => writeFileSync(config_path, JSON.stringify(config));
+const completions = "edit exit quit clear log help watch load reset".split(
+  " "
+);
 const write = (x) => process.stdin.write(x);
 let rl = createRl();
 let watching = false;
@@ -46,7 +49,7 @@ function printFrame() {
   console.clear();
   log(bold("RAZITE"));
   log(`\nDEF: ${config[config.def]}`);
-  log(`WATCHING: ${watching ? watching : "NO"}\n`)
+  log(`WATCHING: ${watching ? watching : "NO"}\n`);
   log(`METHOD: ${config.options.method}`);
   console.log(`HEADERS:`, config.options.headers);
   console.log(`BODY:`, config.options.body);
@@ -56,6 +59,9 @@ function printFrame() {
 async function parseCommand(line, rl) {
   line = line.split(" ").filter(Boolean);
   switch (line[0]) {
+    case "set":
+      set(line[1],line[2]);
+      return ask();
     case "edit":
       return openConfig();
     case "clear":
@@ -80,6 +86,8 @@ async function parseCommand(line, rl) {
       return ask();
     case "quit":
       process.exit();
+    case "exit":
+      process.exit();
     default:
       if (line[0]) await fetchLink(line[0]);
       return ask();
@@ -88,10 +96,22 @@ async function parseCommand(line, rl) {
   ask();
 }
 
+function set(key, value) {
+  let p = config;
+  const keys = key.split(".");
+  const lastKey = keys.pop();
+  for (const i of keys) p = p[i];
+  p[lastKey] = value;
+
+  printFrame();
+  log(`setted ${key} : ${value}`);
+  saveConfig();
+}
+
 function loadEnv(path) {
   const keys = parse(readFile(path, true), "utf-8");
   config = { ...keys, ...config };
-  writeFileSync(config_path, JSON.stringify(config));
+  saveConfig();
 }
 
 function watchPath(path, link = "def") {
@@ -192,8 +212,7 @@ function handleFetchErrors(err) {
   if (this.exitAfter) return;
   switch (err.name) {
     case "SyntaxError":
-      log(grey(`fetching as text instead`));
-      request(this.link, config.options, "text", this.exitAfter);
+      log(grey(`try fetching as text instead`));
       break;
     case "system":
       break;

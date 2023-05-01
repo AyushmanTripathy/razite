@@ -5,11 +5,15 @@ the config file is stored in $HOME/.config/.razite.json
 
 COMMAND | FUNCTIONALITY       | ARGS        |
 ------- | ------------------- | ----------- |
-help    | shows the message   | -           |
-watch   | watch path          | path, link  |
+help    | shows this message  | -           |
+watch   | watch path          | path        |
+set     | set arg1 as arg2    | arg1, arg2  |
 load    | load .env vars      | path        |
 edit    | edit config         | -           |
 reset   | reset config        | -           |
 clear   | clear console       | -           |
 log     | print out config    | keys        |
 quit    | exit                | -           |
+
+report any bugs on
+https://github.com/AyushmanTripathy/razite
