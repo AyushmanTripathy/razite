@@ -8,7 +8,7 @@ COMMAND | FUNCTIONALITY       | ARGS        |
 help    | shows the message   | -           |
 watch   | watch path          | path, link  |
 load    | load .env vars      | path        |
-config  | edit config         | -           |
+edit    | edit config         | -           |
 reset   | reset config        | -           |
 clear   | clear console       | -           |
 log     | print out config    | keys        |

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { green, reverse, red, grey } from "btss";
+import { green, reverse, red, grey, bold } from "btss";
 import { readFileSync, writeFileSync } from "fs";
 import { createInterface } from "readline";
 import { homedir } from "os";
@@ -11,12 +11,16 @@ import fetch from "node-fetch";
 import explainStatusCode from "./errorType.js";
 import { watch } from "chokidar";
 
-globalThis.log = (str) => console.log(str);
-globalThis.completions = "config quit clear log help watch load reset".split(" ");
-const config_path = homedir() + "/.config/.razite.json";
+const log = (str) => console.log(str);
+const completions = "edit quit clear log help watch load reset".split(" ");
+const write = (x) => process.stdin.write(x);
+let rl = createRl();
+let watching = false;
 
-console.log("RAZITE")
-console.log('type "help" to know more!')
+const config_path = homedir() + "/.config/.razite.json";
+const promptString = green(">>> ");
+rl.setPrompt(promptString);
+
 init();
 function init() {
   try {
@@ -24,43 +28,64 @@ function init() {
   } catch (e) {
     globalThis.config = resetConfig();
   }
-  const rl = createRl();
-  rl.on("line", async (line) => {
+  printFrame();
+  ask();
+}
+
+function ask() {
+  rl.question(promptString, async (input) => {
     try {
-      await parseCommand(line, rl);
+      await parseCommand(input);
     } catch (e) {
-      log(e.message);
+      console.error(e);
     }
   });
+}
+
+function printFrame() {
+  console.clear();
+  log(bold("RAZITE"));
+  log(`\nDEF: ${config[config.def]}`);
+  log(`WATCHING: ${watching ? watching : "NO"}\n`)
+  log(`METHOD: ${config.options.method}`);
+  console.log(`HEADERS:`, config.options.headers);
+  console.log(`BODY:`, config.options.body);
+  log("");
 }
 
 async function parseCommand(line, rl) {
   line = line.split(" ").filter(Boolean);
   switch (line[0]) {
-    case "config":
-      rl.close();
+    case "edit":
       return openConfig();
     case "clear":
-      return console.clear();
+      break;
     case "watch":
-      return watchPath(line[1], line[2]);
+      watchPath(line[1], line[2]);
+      break;
     case "help":
-      return help();
+      help();
+      break;
     case "reset":
-      return config = resetConfig();
+      resetConfig();
+      break;
     case "load":
-      return loadEnv(line[1]);
+      loadEnv(line[1]);
+      break;
     case "log":
       line.shift();
       let value = config;
       for (const key of line) value = value[key];
-      return console.log(value);
+      console.log(value);
+      return ask();
     case "quit":
       process.exit();
     default:
       if (line[0]) await fetchLink(line[0]);
-      break;
+      return ask();
   }
+  printFrame();
+  ask();
 }
 
 function loadEnv(path) {
@@ -70,21 +95,24 @@ function loadEnv(path) {
 }
 
 function watchPath(path, link = "def") {
+  watching = path;
   let wait = true;
   setTimeout(() => (wait = false), 1000);
-  watch(path).on("all", (event,file) => {
+  watch(path).on("all", async (event, file) => {
     if (wait) return;
-    log(wait)
+    printFrame();
     console.log(green("Change dectected."));
-    fetchLink(link);
+    await fetchLink(link);
+    ask();
   });
 }
 
 function resetConfig() {
   const data = readFile("../config.swp");
   writeFileSync(config_path, data);
+  config = JSON.parse(data);
+  printFrame();
   log(green("changed .razite.json"));
-  return JSON.parse(data);
 }
 
 async function fetchLink(command) {
@@ -103,7 +131,7 @@ async function fetchLink(command) {
 
   //check if var exits
   if (!config[command] && command)
-    return console.log(red(`${command} not defined!`));
+    return console.log(red(`${command} not valid!`));
   if (command != undefined)
     await request(config[command], config.options, config.type);
 }
@@ -132,8 +160,6 @@ async function request(link, options, type, exitAfter) {
       if (body) log(body);
     } else {
       log(red(`server responded with status ${reverse(response.status)}`));
-      log("method : " + options.method);
-      log(options);
       log(explainStatusCode(response.status));
     }
 
@@ -144,21 +170,24 @@ async function request(link, options, type, exitAfter) {
 }
 
 function openConfig() {
+  rl.close();
   const editor = process.env.EDITOR || "vim";
-
   const child = spawn(editor, [config_path], {
     stdio: "inherit",
   });
 
   child.on("exit", (e, code) => {
+    rl = createRl();
+    rl.setPrompt(promptString);
     init();
   });
+  return true;
 }
 
 function handleFetchErrors(err) {
-  log(red(err.name));
-  err.type ? log(`type : ${err.type}`) : "";
-  log(err.message);
+  write(red(err.name));
+  err.type ? write(` | type : ${err.type}`) : "";
+  write(`\n${err.message}\n`);
 
   if (this.exitAfter) return;
   switch (err.name) {
@@ -169,7 +198,6 @@ function handleFetchErrors(err) {
     case "system":
       break;
     default:
-      log(err.name);
       break;
   }
 }
