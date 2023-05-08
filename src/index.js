@@ -29,7 +29,7 @@ function init() {
   try {
     globalThis.config = loadJson(config_path, 1);
   } catch (e) {
-    globalThis.config = resetConfig();
+    resetConfig();
   }
   printFrame();
   ask();
@@ -130,7 +130,7 @@ function watchPath(path, link = "def") {
 function resetConfig() {
   const data = readFile("../config.swp");
   writeFileSync(config_path, data);
-  config = JSON.parse(data);
+  globalThis.config = JSON.parse(data);
   printFrame();
   log(green("changed .razite.json"));
 }
